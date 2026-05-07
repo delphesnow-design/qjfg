@@ -1,4 +1,9 @@
-import os
+from config.constants import (
+    BACKGROUND_DIR,
+    MEDIAPIPE_MODEL_PATH,
+    MODNET_MODEL_PATH,
+    RVM_MODEL_PATH,
+)
 
 
 class BackgroundChangerFactory:
@@ -28,9 +33,7 @@ class BackgroundChangerFactory:
             # MODNet - 延迟导入，避免与MediaPipe的DLL冲突
             from algorithms.modnet.segmenter import MODNetBackgroundChanger
 
-            model_path = kwargs.get(
-                "model_path", "models/modnet_photographic_portrait_matting.ckpt"
-            )
+            model_path = kwargs.get("model_path", MODNET_MODEL_PATH)
             self.changer = MODNetBackgroundChanger(model_path=model_path)
 
             # 检查MODNet是否可用
@@ -40,16 +43,14 @@ class BackgroundChangerFactory:
                 self.algorithm_name = "mediapipe"
                 from algorithms.mediapipe.segmenter import BackgroundChanger
 
-                model_path = kwargs.get(
-                    "mediapipe_model_path", "models/selfie_multiclass_256x256.tflite"
-                )
+                model_path = kwargs.get("mediapipe_model_path", MEDIAPIPE_MODEL_PATH)
                 self.changer = BackgroundChanger(model_path=model_path)
 
         elif self.algorithm_id == 2:
             # RVM - 延迟导入
             from algorithms.rvm.segmenter import RVMBackgroundChanger
 
-            model_path = kwargs.get("model_path", "models/rvm_mobilenetv3_fp32.onnx")
+            model_path = kwargs.get("model_path", RVM_MODEL_PATH)
             self.changer = RVMBackgroundChanger(model_path=model_path)
 
             # 检查RVM是否可用
@@ -59,16 +60,14 @@ class BackgroundChangerFactory:
                 self.algorithm_name = "mediapipe"
                 from algorithms.mediapipe.segmenter import BackgroundChanger
 
-                model_path = kwargs.get(
-                    "mediapipe_model_path", "models/selfie_multiclass_256x256.tflite"
-                )
+                model_path = kwargs.get("mediapipe_model_path", MEDIAPIPE_MODEL_PATH)
                 self.changer = BackgroundChanger(model_path=model_path)
 
         elif self.algorithm_id == 1:
             # MediaPipe - 延迟导入
             from algorithms.mediapipe.segmenter import BackgroundChanger
 
-            model_path = kwargs.get("model_path", "models/selfie_multiclass_256x256.tflite")
+            model_path = kwargs.get("model_path", MEDIAPIPE_MODEL_PATH)
             self.changer = BackgroundChanger(model_path=model_path)
 
         elif self.algorithm_id in (3, 4, 5, 6, 7):
@@ -81,7 +80,7 @@ class BackgroundChangerFactory:
             from algorithms.mediapipe.segmenter import BackgroundChanger
 
             print(f"未知算法ID {self.algorithm_id}，使用默认MediaPipe")
-            model_path = kwargs.get("model_path", "models/selfie_multiclass_256x256.tflite")
+            model_path = kwargs.get("model_path", MEDIAPIPE_MODEL_PATH)
             self.changer = BackgroundChanger(model_path=model_path)
             self.algorithm_id = 1
             self.algorithm_name = "mediapipe"
@@ -102,7 +101,7 @@ class BackgroundChangerFactory:
         """切换到下一个背景"""
         return self.changer.next_background()
 
-    def get_current_background_name(self, backgrounds_folder="背景"):
+    def get_current_background_name(self, backgrounds_folder=BACKGROUND_DIR):
         """获取当前背景名称"""
         return self.changer.get_current_background_name(backgrounds_folder)
 
@@ -150,6 +149,11 @@ class BackgroundChangerFactory:
     def backgrounds(self):
         """获取背景列表"""
         return self.changer.backgrounds
+
+    @backgrounds.setter
+    def backgrounds(self, value):
+        """设置背景列表"""
+        self.changer.backgrounds = value
 
 
 def create_background_changer(algorithm_id=1, **kwargs):

@@ -1,6 +1,12 @@
-# test_factory.py  放在项目根目录运行
-import sys, os, cv2, numpy as np
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# tests/manual/smoke_factory.py
+import sys
+from pathlib import Path
+
+import cv2
+import numpy as np
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(PROJECT_ROOT))
 
 for lib in ['torch', 'mediapipe', 'onnxruntime']:
     try: __import__(lib)

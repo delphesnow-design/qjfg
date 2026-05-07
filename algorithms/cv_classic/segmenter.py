@@ -8,6 +8,8 @@ from typing import Optional
 import cv2
 import numpy as np
 
+from config.constants import BACKGROUND_DIR
+
 
 # ─────────────────────────────────────────────────────────────
 #  通用后处理工具
@@ -576,7 +578,7 @@ class CVClassicBackgroundChanger:
             return True
         return False
 
-    def get_current_background_name(self, backgrounds_folder: str = "背景") -> str:
+    def get_current_background_name(self, backgrounds_folder: str = BACKGROUND_DIR) -> str:
         if not self.backgrounds:
             return "无背景"
         supported_formats = [".jpg", ".jpeg", ".png", ".bmp"]

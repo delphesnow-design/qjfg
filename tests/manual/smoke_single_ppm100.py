@@ -1,15 +1,23 @@
-# test_single.py  放项目根目录运行
-import sys, os, cv2, numpy as np
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# tests/manual/smoke_single_ppm100.py
+import os
+import sys
+from pathlib import Path
+
+import cv2
+import numpy as np
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(PROJECT_ROOT))
 
 for lib in ['torch', 'mediapipe', 'onnxruntime']:
     try: __import__(lib)
     except ImportError: pass
 
 from algorithms.factory import BackgroundChangerFactory
+from config.constants import PPM100_IMAGE_DIR, PPM100_MATTE_DIR
 
-PPM_IMAGE_DIR = r"C:\Users\19800\Desktop\MY\cs\qianjingfengge\PPM-100\image"
-PPM_MATTE_DIR = r"C:\Users\19800\Desktop\MY\cs\qianjingfengge\PPM-100\matte"
+PPM_IMAGE_DIR = PPM100_IMAGE_DIR
+PPM_MATTE_DIR = PPM100_MATTE_DIR
 
 # 取第一张图
 fname = sorted(os.listdir(PPM_IMAGE_DIR))[0]

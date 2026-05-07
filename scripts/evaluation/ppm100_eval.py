@@ -3,23 +3,29 @@
 """PPM-100 客观评估 - 直接获取掩模版"""
 
 import os, sys, cv2, numpy as np, csv, time
+from pathlib import Path
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(PROJECT_ROOT))
 
 for lib in ['torch', 'mediapipe', 'onnxruntime']:
     try: __import__(lib)
     except ImportError: pass
 
 from algorithms.factory import BackgroundChangerFactory
+from config.constants import (
+    EXPERIMENT_RESULT_DIR,
+    GREEN_BACKGROUND_DIR,
+    PPM100_IMAGE_DIR,
+    PPM100_MATTE_DIR,
+)
 
-PPM_IMAGE_DIR = r"C:\Users\19800\Desktop\MY\cs\qianjingfengge\PPM-100\image"
-PPM_MATTE_DIR = r"C:\Users\19800\Desktop\MY\cs\qianjingfengge\PPM-100\matte"
-RESULT_DIR    = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                             "experiment_results", "ppm100")
+PPM_IMAGE_DIR = PPM100_IMAGE_DIR
+PPM_MATTE_DIR = PPM100_MATTE_DIR
+RESULT_DIR    = os.path.join(EXPERIMENT_RESULT_DIR, "ppm100")
 os.makedirs(RESULT_DIR, exist_ok=True)
 
-GREEN_BG_DIR  = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                             "_temp_green_bg")
+GREEN_BG_DIR  = GREEN_BACKGROUND_DIR
 os.makedirs(GREEN_BG_DIR, exist_ok=True)
 GREEN_BG_PATH = os.path.join(GREEN_BG_DIR, "green.jpg")
 if not os.path.exists(GREEN_BG_PATH):

@@ -1,10 +1,17 @@
 import os
+import sys
+from pathlib import Path
+
 import cv2
 import numpy as np
 
-# ── 改成你的实际路径 ──
-PPM_IMAGE_DIR = r"C:\Users\19800\Desktop\MY\cs\qianjingfengge\PPM-100\image"
-PPM_MATTE_DIR = r"C:\Users\19800\Desktop\MY\cs\qianjingfengge\PPM-100\matte"
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(PROJECT_ROOT))
+
+from config.constants import PPM100_IMAGE_DIR, PPM100_MATTE_DIR
+
+PPM_IMAGE_DIR = PPM100_IMAGE_DIR
+PPM_MATTE_DIR = PPM100_MATTE_DIR
 
 # 第一步：列出文件
 image_files = sorted([

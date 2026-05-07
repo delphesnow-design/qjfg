@@ -4,12 +4,36 @@ import os
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # 资源目录
-BACKGROUND_DIR = os.path.join(PROJECT_ROOT, "assets", "backgrounds")
-SCREENSHOT_DIR = os.path.join(PROJECT_ROOT, "assets", "screenshots")
-RECORDING_DIR = os.path.join(PROJECT_ROOT, "assets", "recordings")
+ASSET_DIR = os.path.join(PROJECT_ROOT, "assets")
+BACKGROUND_DIR = os.path.join(ASSET_DIR, "backgrounds")
+SCREENSHOT_DIR = os.path.join(ASSET_DIR, "screenshots")
+RECORDING_DIR = os.path.join(ASSET_DIR, "recordings")
+
+# 本地数据与实验输出目录
+DATA_DIR = os.path.join(PROJECT_ROOT, "data")
+EXPERIMENT_DIR = os.path.join(PROJECT_ROOT, "experiments")
+EXPERIMENT_RESULT_DIR = os.path.join(EXPERIMENT_DIR, "results")
+TEST_FIXTURE_DIR = os.path.join(PROJECT_ROOT, "tests", "fixtures")
+GREEN_BACKGROUND_DIR = os.path.join(TEST_FIXTURE_DIR, "backgrounds")
+GREEN_BACKGROUND_PATH = os.path.join(GREEN_BACKGROUND_DIR, "green.jpg")
+
+# PPM-100 数据集路径，可通过环境变量覆盖
+PPM100_ROOT = os.environ.get("PPM100_DIR", os.path.join(DATA_DIR, "PPM-100"))
+PPM100_IMAGE_DIR = os.environ.get(
+    "PPM100_IMAGE_DIR", os.path.join(PPM100_ROOT, "image")
+)
+PPM100_MATTE_DIR = os.environ.get(
+    "PPM100_MATTE_DIR", os.path.join(PPM100_ROOT, "matte")
+)
 
 # 模型路径
-MODEL_PATH = os.path.join(PROJECT_ROOT, "models", "selfie_multiclass_256x256.tflite")
+MODEL_DIR = os.path.join(PROJECT_ROOT, "models")
+MEDIAPIPE_MODEL_PATH = os.path.join(MODEL_DIR, "selfie_multiclass_256x256.tflite")
+MODNET_MODEL_PATH = os.path.join(MODEL_DIR, "modnet_photographic_portrait_matting.ckpt")
+RVM_MODEL_PATH = os.path.join(MODEL_DIR, "rvm_mobilenetv3_fp32.onnx")
+
+# 向后兼容旧名称
+MODEL_PATH = MEDIAPIPE_MODEL_PATH
 
 # =============== 算法选择参数 ===============
 # 修改这里的值来选择不同的算法：

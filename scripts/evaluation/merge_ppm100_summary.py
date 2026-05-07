@@ -1,7 +1,16 @@
-# merge_summary.py  放项目根目录运行
-import os, csv, numpy as np
+import csv
+import os
+import sys
+from pathlib import Path
 
-RESULT_DIR = r"C:\Users\19800\Desktop\MY\cs\qianjingfengge\experiment_results\ppm100"
+import numpy as np
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(PROJECT_ROOT))
+
+from config.constants import EXPERIMENT_RESULT_DIR
+
+RESULT_DIR = os.path.join(EXPERIMENT_RESULT_DIR, "ppm100")
 
 results = []
 for algo_name, ms in [("MediaPipe", 189.3), ("MODNet", 274.9), ("RVM", 29.6)]:

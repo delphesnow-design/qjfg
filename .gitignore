@@ -1,15 +1,28 @@
 .venv/
 __pycache__/
+.pytest_cache/
 *.pyc
 *.pyo
 *.pyd
+
+# Model weights
 *.onnx
 *.ckpt
 *.tflite
 *.pt
 *.pth
+
+# Runtime outputs
 assets/screenshots/
 assets/recordings/
-*.zip
+experiments/results/
+runtime/
+
+# Local datasets and generated artifacts
+data/PPM-100/
 PPM-100/
 experiment_results/
+_temp_green_bg/
+
+# Archives
+*.zip

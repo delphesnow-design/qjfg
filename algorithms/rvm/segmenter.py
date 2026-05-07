@@ -2,13 +2,13 @@ import os
 import cv2
 import numpy as np
 from PIL import Image
-from config.constants import BACKGROUND_DIR
+from config.constants import BACKGROUND_DIR, RVM_MODEL_PATH
 
 
 class RVMBackgroundChanger:
     """RobustVideoMatting 背景替换器 - 专为实时视频设计，内置时序一致性"""
 
-    def __init__(self, model_path="models/rvm_mobilenetv3_fp32.onnx"):
+    def __init__(self, model_path=RVM_MODEL_PATH):
         self.backgrounds = []
         self.current_background_index = 0
         self.model_path = model_path
@@ -216,7 +216,7 @@ class RVMBackgroundChanger:
         print(f"RVM已切换到 {mode_name}")
         return self.performance_mode
 
-    def get_current_background_name(self, backgrounds_folder="背景"):
+    def get_current_background_name(self, backgrounds_folder=BACKGROUND_DIR):
         """获取当前背景的文件名"""
         if len(self.backgrounds) == 0:
             return "无背景"

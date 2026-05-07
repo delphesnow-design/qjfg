@@ -5,13 +5,13 @@ import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 from PIL import Image
-from config.constants import BACKGROUND_DIR
+from config.constants import BACKGROUND_DIR, MEDIAPIPE_MODEL_PATH
 
 
 class BackgroundChanger:
     """背景切换器 - 处理人像分割和背景替换的核心逻辑"""
 
-    def __init__(self, model_path="models/selfie_multiclass_256x256.tflite"):
+    def __init__(self, model_path=MEDIAPIPE_MODEL_PATH):
         self.backgrounds = []
         self.current_background_index = 0
         self.segmenter = None
@@ -186,7 +186,7 @@ class BackgroundChanger:
             return True
         return False
 
-    def get_current_background_name(self, backgrounds_folder="背景"):
+    def get_current_background_name(self, backgrounds_folder=BACKGROUND_DIR):
         """获取当前背景的文件名"""
         if len(self.backgrounds) == 0:
             return "无背景"

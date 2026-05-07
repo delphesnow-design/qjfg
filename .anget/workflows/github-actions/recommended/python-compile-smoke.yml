@@ -1,0 +1,45 @@
+name: Python compile smoke
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+permissions:
+  contents: read
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Compile project
+        run: |
+          python -m compileall main.py algorithms config gui utils scripts tests
+
+      - name: Import configuration
+        run: |
+          python - <<'PY'
+          from config.constants import BACKGROUND_DIR, EXPERIMENT_RESULT_DIR
+          from algorithms.factory import BackgroundChangerFactory
+          print(BACKGROUND_DIR)
+          print(EXPERIMENT_RESULT_DIR)
+          print(BackgroundChangerFactory.ALGORITHMS)
+          PY

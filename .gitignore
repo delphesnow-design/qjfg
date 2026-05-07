@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.onnx
+*.ckpt
+*.tflite
+*.pt
+*.pth
+assets/screenshots/
+assets/recordings/
+*.zip
+PPM-100/
+experiment_results/

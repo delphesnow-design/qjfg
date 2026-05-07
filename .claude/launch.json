@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "前景分割 GUI",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["main.py"],
+      "port": null
+    }
+  ]
+}

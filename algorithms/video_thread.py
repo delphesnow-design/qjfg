@@ -14,9 +14,11 @@ class VideoThread(threading.Thread):
     def __init__(self, background_changer):
         super().__init__(daemon=True)   # daemon=True：主线程退出时自动结束
         self.background_changer = background_changer
+        self._changer_lock = threading.RLock()
         self._run_flag = True
         self.camera_paused = False
         self._last_frame = None
+        self._camera_error_reported = False
 
         # 帧队列：视频线程生产，主线程消费
         # maxsize=2：最多缓存2帧，防止内存堆积，保持实时性
@@ -42,62 +44,69 @@ class VideoThread(threading.Thread):
         self.show_original = False
 
     def run(self):
-        cap = cv2.VideoCapture(0)
-        if not cap.isOpened():
-            print("=" * 60)
-            print("错误: 无法打开摄像头!")
-            print("可能的原因:")
-            print("1. 摄像头被其他程序占用")
-            print("2. 摄像头驱动未安装或损坏")
-            print("3. OpenCV 无法访问默认摄像头")
-            print("=" * 60)
-            return
+        cap = None
+        try:
+            while self._run_flag:
+                if self.camera_paused:
+                    if cap is not None:
+                        cap.release()
+                        cap = None
+                    paused_frame = self._get_paused_frame()
+                    self._last_frame = paused_frame
+                    self._put_frame(self.frame_queue, paused_frame)
+                    self._send_virtual_camera_frame(paused_frame)
+                    time.sleep(0.1)
+                    continue
 
-        while self._run_flag:
-            # 摄像头关闭时保持最后一帧
-            if self.camera_paused:
-                if self._last_frame is not None:
-                    self._put_frame(self.frame_queue, self._last_frame)
-                    self._send_virtual_camera_frame(self._last_frame)
-                time.sleep(0.033)
-                continue
+                if cap is None:
+                    cap = cv2.VideoCapture(0)
+                    if not cap.isOpened():
+                        self._print_camera_open_error_once()
+                        cap.release()
+                        cap = None
+                        time.sleep(0.5)
+                        continue
+                    self._camera_error_reported = False
 
-            ret, frame = cap.read()
-            if not ret:
-                time.sleep(0.01)
-                continue
+                ret, frame = cap.read()
+                if not ret:
+                    cap.release()
+                    cap = None
+                    time.sleep(0.05)
+                    continue
 
-            if CAMERA_FLIP_HORIZONTAL:
-                frame = cv2.flip(frame, 1)
+                if CAMERA_FLIP_HORIZONTAL:
+                    frame = cv2.flip(frame, 1)
 
-            self.frame_size = (frame.shape[1], frame.shape[0])
+                self.frame_size = (frame.shape[1], frame.shape[0])
 
-            # 发送原始帧（供截图用）
-            self._put_frame(self.original_queue, frame.copy())
+                # 发送原始帧（供截图用）
+                self._put_frame(self.original_queue, frame.copy())
 
-            if self.show_original:
-                processed_frame = frame.copy()
-            else:
-                processed_frame = self.background_changer.process_frame(frame)
+                if self.show_original:
+                    processed_frame = frame.copy()
+                else:
+                    processed_frame = self.get_background_changer().process_frame(frame)
 
-            self._last_frame = processed_frame
+                self._last_frame = processed_frame
 
-            # 发送处理后的帧
-            self._put_frame(self.frame_queue, processed_frame)
+                # 发送处理后的帧
+                self._put_frame(self.frame_queue, processed_frame)
 
-            # 录屏
-            if self.recording and self.video_writer is not None:
-                out = processed_frame
-                if out.shape[1] != self.frame_size[0] or out.shape[0] != self.frame_size[1]:
-                    out = cv2.resize(out, self.frame_size)
-                self.video_writer.write(out)
+                # 录屏
+                if self.recording and self.video_writer is not None:
+                    out = processed_frame
+                    if out.shape[1] != self.frame_size[0] or out.shape[0] != self.frame_size[1]:
+                        out = cv2.resize(out, self.frame_size)
+                    self.video_writer.write(out)
 
-            self._send_virtual_camera_frame(processed_frame)
-
-        cap.release()
-        if self.video_writer is not None:
-            self.video_writer.release()
-        self._close_virtual_camera()
+                self._send_virtual_camera_frame(processed_frame)
+        finally:
+            if cap is not None:
+                cap.release()
+            if self.video_writer is not None:
+                self.video_writer.release()
+            self._close_virtual_camera()
 
     @staticmethod
     def _put_frame(q: queue.Queue, frame: np.ndarray):
@@ -175,11 +184,31 @@ class VideoThread(threading.Thread):
                 "error": self.virtual_camera_error,
             }
 
+    def get_background_changer(self):
+        with self._changer_lock:
+            return self.background_changer
+
+    def set_background_changer(self, background_changer):
+        with self._changer_lock:
+            self.background_changer = background_changer
+        if self.camera_paused:
+            self.request_paused_frame_refresh()
+
     def open_camera(self):
         self.camera_paused = False
+        self._camera_error_reported = False
 
     def close_camera(self):
         self.camera_paused = True
+        self.request_paused_frame_refresh()
+
+    def request_paused_frame_refresh(self):
+        if not self.camera_paused:
+            return
+        paused_frame = self._get_paused_frame()
+        self._last_frame = paused_frame
+        self._put_frame(self.frame_queue, paused_frame)
+        self._send_virtual_camera_frame(paused_frame)
 
     def toggle_original(self):
         self.show_original = not self.show_original
@@ -267,3 +296,30 @@ class VideoThread(threading.Thread):
         self.virtual_camera = None
         self.virtual_camera_size = None
         self.virtual_camera_device = ""
+
+    def _get_paused_frame(self) -> np.ndarray:
+        width, height = self.frame_size
+        try:
+            changer = self.get_background_changer()
+            backgrounds = changer.backgrounds
+            current_index = changer.current_background_index
+            if backgrounds and 0 <= current_index < len(backgrounds):
+                frame = backgrounds[current_index]
+                if frame.shape[1] != width or frame.shape[0] != height:
+                    frame = cv2.resize(frame, (width, height), interpolation=cv2.INTER_AREA)
+                return frame.copy()
+        except Exception as e:
+            print(f"生成摄像头关闭预览失败: {e}")
+        return np.zeros((height, width, 3), dtype=np.uint8)
+
+    def _print_camera_open_error_once(self):
+        if self._camera_error_reported:
+            return
+        self._camera_error_reported = True
+        print("=" * 60)
+        print("错误: 无法打开摄像头!")
+        print("可能的原因:")
+        print("1. 摄像头被其他程序占用")
+        print("2. 摄像头驱动未安装或损坏")
+        print("3. OpenCV 无法访问默认摄像头")
+        print("=" * 60)

@@ -1,4 +1,5 @@
 import os
+import threading
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 
@@ -102,6 +103,8 @@ class BackgroundChangerGUI:
         self.original_frame = None
         self._photo = None          # 保持 PhotoImage 引用，防止 GC 回收
         self._poll_job = None
+        self._switching_algorithm = False
+        self._algorithm_switch_token = 0
 
         self._build_ui()
         self._start_thread()
@@ -223,8 +226,10 @@ class BackgroundChangerGUI:
 
     # ── 视频线程 ──────────────────────────────────────────────
 
-    def _start_thread(self):
+    def _start_thread(self, camera_paused=False):
         self.thread = VideoThread(self.background_changer)
+        if camera_paused:
+            self.thread.close_camera()
         self.thread.start()
         self._schedule_poll()
 
@@ -288,6 +293,10 @@ class BackgroundChangerGUI:
     # ── 算法切换 ──────────────────────────────────────────────
 
     def _on_algo_changed(self, event=None):
+        if self._switching_algorithm:
+            self._set_algorithm_combo(self.current_algorithm_id)
+            return
+
         idx = self.algo_combo.current()
         if idx < 0 or idx >= len(ALGORITHM_OPTIONS):
             return
@@ -297,58 +306,108 @@ class BackgroundChangerGUI:
             return
 
         self.show_status(f"正在切换到 {algorithm_name}...", "info")
+        self._switching_algorithm = True
+        self._algorithm_switch_token += 1
+        switch_token = self._algorithm_switch_token
+        self.algo_combo.config(state="disabled")
 
         camera_was_paused = self.thread.camera_paused
         virtual_was_requested = self.virtual_camera_requested
         current_backgrounds = list(self.background_changer.backgrounds)
         current_bg_index = self.background_changer.current_background_index
 
-        if self.is_recording:
-            self.thread.stop_recording()
-            self.is_recording = False
-            self._reset_record_button()
+        threading.Thread(
+            target=self._create_algorithm_in_background,
+            args=(
+                switch_token,
+                algorithm_id,
+                algorithm_name,
+                current_backgrounds,
+                current_bg_index,
+                camera_was_paused,
+                virtual_was_requested,
+            ),
+            daemon=True,
+        ).start()
 
-        if virtual_was_requested:
-            self.thread.stop_virtual_camera()
-            self._virtual_camera_announced_device = ""
+    def _create_algorithm_in_background(
+        self,
+        switch_token,
+        algorithm_id,
+        algorithm_name,
+        current_backgrounds,
+        current_bg_index,
+        camera_was_paused,
+        virtual_was_requested,
+    ):
+        new_changer = None
+        error = None
+        try:
+            new_changer = create_background_changer(algorithm_id=algorithm_id)
+            new_changer.backgrounds = current_backgrounds
+            new_changer.current_background_index = (
+                min(current_bg_index, len(current_backgrounds) - 1)
+                if current_backgrounds else 0
+            )
+        except Exception as e:
+            error = e
 
-        self._cancel_poll()
-        self.thread.stop()
-        self.thread.join(timeout=2)
+        try:
+            self.root.after(
+                0,
+                lambda: self._finish_algorithm_switch(
+                    switch_token,
+                    algorithm_name,
+                    new_changer,
+                    error,
+                    camera_was_paused,
+                    virtual_was_requested,
+                ),
+            )
+        except RuntimeError:
+            pass
 
-        self.background_changer = create_background_changer(algorithm_id=algorithm_id)
+    def _finish_algorithm_switch(
+        self,
+        switch_token,
+        algorithm_name,
+        new_changer,
+        error,
+        camera_was_paused,
+        virtual_was_requested,
+    ):
+        if switch_token != self._algorithm_switch_token:
+            return
+
+        self._switching_algorithm = False
+        self.algo_combo.config(state="readonly")
+
+        if error is not None or new_changer is None:
+            self._set_algorithm_combo(self.current_algorithm_id)
+            self.show_status(f"切换到 {algorithm_name} 失败: {error}", "error")
+            return
+
+        self.background_changer = new_changer
         self.current_algorithm_id = self.background_changer.algorithm_id
+        self.thread.set_background_changer(self.background_changer)
         self.root.title(f"背景切换上位机 - {self.background_changer.algorithm_name}")
 
-        self.background_changer.backgrounds = current_backgrounds
-        self.background_changer.current_background_index = (
-            min(current_bg_index, len(current_backgrounds) - 1)
-            if current_backgrounds else 0
-        )
         self._set_algorithm_combo(self.current_algorithm_id)
         self.update_background_list()
 
-        self._start_thread()
         if camera_was_paused:
-            self.thread.close_camera()
-            self.btn_open_cam.config(state="normal")
-            self.btn_close_cam.config(state="disabled")
-        else:
-            self.btn_open_cam.config(state="disabled")
-            self.btn_close_cam.config(state="normal")
+            self.thread.request_paused_frame_refresh()
 
-        if virtual_was_requested:
-            if self.thread.start_virtual_camera():
-                self.virtual_camera_requested = True
-                self.show_status(
-                    f"已切换到 {self.background_changer.algorithm_name}，正在恢复虚拟摄像头输出",
-                    "info",
-                )
-            else:
-                self.virtual_camera_requested = False
-                self._reset_virtual_camera_button()
-                status = self.thread.get_virtual_camera_status()
-                self.show_status(status.get("error") or "虚拟摄像头恢复失败", "error")
+        if self.is_recording:
+            self.show_status(
+                f"已切换到 {self.background_changer.algorithm_name}，录屏继续进行",
+                "success",
+            )
+        elif virtual_was_requested:
+            self.show_status(
+                f"已切换到 {self.background_changer.algorithm_name}，虚拟摄像头继续输出",
+                "success",
+            )
         else:
             self.show_status(f"已切换到 {self.background_changer.algorithm_name}", "success")
 
@@ -396,6 +455,8 @@ class BackgroundChangerGUI:
         idx = self.bg_combo.current()
         if 0 <= idx < len(self.background_changer.backgrounds):
             self.background_changer.current_background_index = idx
+            if self.thread.camera_paused:
+                self.thread.request_paused_frame_refresh()
             self.show_status(f"已切换到背景: {self.bg_combo.get()}", "info")
 
     def upload_background(self):
@@ -426,7 +487,11 @@ class BackgroundChangerGUI:
                 if bg is not None and bg.size > 0:
                     self.background_changer.backgrounds.append(bg)
                     self.update_background_list()
-                    self.bg_combo.current(len(self.background_changer.backgrounds) - 1)
+                    new_index = len(self.background_changer.backgrounds) - 1
+                    self.background_changer.current_background_index = new_index
+                    self.bg_combo.current(new_index)
+                    if self.thread.camera_paused:
+                        self.thread.request_paused_frame_refresh()
                     self.show_status("背景上传成功！", "success")
                 else:
                     self.show_status("无法加载图片文件", "error")

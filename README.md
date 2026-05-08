@@ -1,14 +1,14 @@
 # 实时背景切换工具
 
-基于人像分割的实时视频背景替换桌面应用，支持多种算法切换，使用 Python + tkinter 构建。
+基于 MOG2 背景建模的实时视频背景替换桌面上位机，使用 Python + tkinter 构建。
 
 ## 功能特点
 
-- 多种分割算法：MODNet / MediaPipe / RVM / 传统 CV 算法
+- 固定使用当前 benchmark 最优算法：MOG2
 - 实时背景替换：无需绿幕，摄像头画面实时替换背景
 - 背景资源管理：内置背景、上传背景、动态切换
 - 截图与录屏：保存到 `assets/screenshots/` 和 `assets/recordings/`
-- 实验脚本：支持摄像头性能实验与 PPM-100 客观评估
+- 轻量依赖：运行上位机只需要 OpenCV、NumPy 和 Pillow
 
 ## 安装
 
@@ -16,7 +16,7 @@
 pip install -r requirements.txt
 ```
 
-MODNet 需要 PyTorch，RVM 需要 onnxruntime。如果只使用 MediaPipe，可按需减少依赖。
+当前上位机运行链路只使用 MOG2，不再加载深度学习模型依赖。历史算法代码仍保留在 `algorithms/` 中，便于复查旧实验报告。
 
 ## 运行
 
@@ -24,12 +24,17 @@ MODNet 需要 PyTorch，RVM 需要 onnxruntime。如果只使用 MediaPipe，可
 python main.py
 ```
 
-算法选择在 `config/constants.py` 中配置：
+Windows 下也可以直接双击一键启动脚本：
+
+```bat
+start_upper_computer.bat
+```
+
+默认算法固定在 `config/constants.py`：
 
 ```python
-ALGORITHM_ID = 0  # MODNet
-ALGORITHM_ID = 1  # MediaPipe
-ALGORITHM_ID = 2  # RVM
+OPTIMAL_ALGORITHM_ID = 3
+OPTIMAL_ALGORITHM_NAME = "MOG2"
 ```
 
 ## 项目结构
@@ -37,16 +42,17 @@ ALGORITHM_ID = 2  # RVM
 ```text
 qjfg/
 ├── main.py                     # 应用入口
-├── requirements.txt            # Python 依赖
+├── requirements.txt            # 上位机运行依赖
+├── start_upper_computer.bat    # Windows 一键启动脚本
 ├── README.md                   # 项目说明
-├── algorithms/                 # 分割算法与统一工厂
+├── algorithms/                 # MOG2 运行链路与历史算法实现
 │   ├── factory.py
 │   ├── video_thread.py
 │   ├── cv_classic/
 │   ├── mediapipe/
 │   ├── modnet/
 │   └── rvm/
-├── config/                     # 项目路径、算法选择、界面参数
+├── config/                     # 项目路径、固定算法、界面参数
 │   └── constants.py
 ├── gui/                        # tkinter 桌面界面
 ├── utils/                      # 文件与图像工具
@@ -71,6 +77,7 @@ qjfg/
 ## 常用脚本
 
 ```bash
+start_upper_computer.bat
 python scripts/evaluation/webcam_experiment.py
 python scripts/evaluation/ppm100_eval.py
 python scripts/evaluation/merge_ppm100_summary.py
@@ -93,7 +100,6 @@ $env:PPM100_DIR="D:\datasets\PPM-100"
 
 ## 故障排除
 
-- 模型加载失败：确认对应权重文件已放入 `models/`
 - 背景为空：确认 `assets/backgrounds/` 中存在支持格式图片
 - PPM-100 评估找不到数据：确认数据集目录或 `PPM100_DIR` 环境变量
-- DLL 初始化失败：保持 `main.py` 中深度学习库在 GUI 导入前预加载
+- 摄像头无法打开：确认摄像头未被其他程序占用，并检查系统摄像头权限

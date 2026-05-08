@@ -36,8 +36,8 @@ class VideoThread(threading.Thread):
             print("错误: 无法打开摄像头!")
             print("可能的原因:")
             print("1. 摄像头被其他程序占用")
-            print("2. DLL 冲突 (PyTorch/MediaPipe 与 OpenCV 冲突)")
-            print("3. 摄像头驱动未安装或损坏")
+            print("2. 摄像头驱动未安装或损坏")
+            print("3. OpenCV 无法访问默认摄像头")
             print("=" * 60)
             return
 

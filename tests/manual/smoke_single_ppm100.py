@@ -38,7 +38,7 @@ print(f"缩放后 image: {image.shape}, gt: {gt.shape}")
 
 # 创建factory
 print("\n创建factory...")
-factory = BackgroundChangerFactory(algorithm_id=1)
+factory = BackgroundChangerFactory()
 print("factory创建成功")
 
 # 设置绿色背景

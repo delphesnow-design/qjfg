@@ -8,14 +8,10 @@ import numpy as np
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-for lib in ['torch', 'mediapipe', 'onnxruntime']:
-    try: __import__(lib)
-    except ImportError: pass
-
 from algorithms.factory import BackgroundChangerFactory
 
 # 1. 创建factory
-factory = BackgroundChangerFactory(algorithm_id=1)   # MediaPipe
+factory = BackgroundChangerFactory()   # MOG2
 print("factory创建成功:", type(factory))
 print("factory属性:", [x for x in dir(factory) if not x.startswith('_')])
 

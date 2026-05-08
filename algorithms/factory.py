@@ -2,69 +2,58 @@ from config.constants import (
     BACKGROUND_DIR,
     MEDIAPIPE_MODEL_PATH,
     MODNET_MODEL_PATH,
+    OPTIMAL_ALGORITHM_ID,
+    OPTIMAL_ALGORITHM_NAME,
     RVM_MODEL_PATH,
 )
 
 
 class BackgroundChangerFactory:
-    """背景替换算法工厂 - 统一接口管理不同算法"""
+    """背景替换算法工厂。
+
+    当前上位机运行链路默认使用 benchmark 最优的 MOG2 算法。显式传入
+    旧算法 ID 时仍可复现实验脚本，避免历史对比报告失真。
+    """
 
     ALGORITHMS = {
-        0: "modnet", 1: "mediapipe", 2: "rvm",
-        3: "mog2", 4: "knn", 5: "grabcut", 6: "lobster", 7: "subsense",
+        0: "MODNet", 1: "MediaPipe", 2: "RVM",
+        3: "MOG2", 4: "KNN", 5: "GrabCut", 6: "LOBSTER", 7: "SuBSENSE",
     }
 
-    def __init__(self, algorithm_id=1, **kwargs):
+    def __init__(self, algorithm_id=OPTIMAL_ALGORITHM_ID, **kwargs):
         """
         初始化背景替换器
 
         Args:
-            algorithm_id (int): 算法ID (0=MODNet, 1=MediaPipe, 2=RVM)
-            **kwargs: 算法特定的参数
+            algorithm_id (int): 默认 MOG2；旧实验脚本可显式传入其它算法 ID。
+            **kwargs: 算法特定参数
         """
         self.algorithm_id = algorithm_id
-        self.algorithm_name = self.ALGORITHMS.get(algorithm_id, "mediapipe")
+        self.algorithm_name = self.ALGORITHMS.get(algorithm_id, OPTIMAL_ALGORITHM_NAME)
         self.changer = None
         self._initialize_changer(**kwargs)
 
     def _initialize_changer(self, **kwargs):
         """根据算法ID初始化对应的背景替换器（延迟导入避免DLL冲突）"""
         if self.algorithm_id == 0:
-            # MODNet - 延迟导入，避免与MediaPipe的DLL冲突
             from algorithms.modnet.segmenter import MODNetBackgroundChanger
 
             model_path = kwargs.get("model_path", MODNET_MODEL_PATH)
             self.changer = MODNetBackgroundChanger(model_path=model_path)
-
-            # 检查MODNet是否可用
             if self.changer.model is None:
-                print("警告: MODNet初始化失败，回退到MediaPipe")
-                self.algorithm_id = 1
-                self.algorithm_name = "mediapipe"
-                from algorithms.mediapipe.segmenter import BackgroundChanger
-
-                model_path = kwargs.get("mediapipe_model_path", MEDIAPIPE_MODEL_PATH)
-                self.changer = BackgroundChanger(model_path=model_path)
+                print(f"警告: MODNet初始化失败，回退到{OPTIMAL_ALGORITHM_NAME}")
+                self._init_optimal_changer()
 
         elif self.algorithm_id == 2:
-            # RVM - 延迟导入
             from algorithms.rvm.segmenter import RVMBackgroundChanger
 
             model_path = kwargs.get("model_path", RVM_MODEL_PATH)
             self.changer = RVMBackgroundChanger(model_path=model_path)
-
-            # 检查RVM是否可用
             if self.changer.session is None:
-                print("警告: RVM初始化失败，回退到MediaPipe")
-                self.algorithm_id = 1
-                self.algorithm_name = "mediapipe"
-                from algorithms.mediapipe.segmenter import BackgroundChanger
-
-                model_path = kwargs.get("mediapipe_model_path", MEDIAPIPE_MODEL_PATH)
-                self.changer = BackgroundChanger(model_path=model_path)
+                print(f"警告: RVM初始化失败，回退到{OPTIMAL_ALGORITHM_NAME}")
+                self._init_optimal_changer()
 
         elif self.algorithm_id == 1:
-            # MediaPipe - 延迟导入
             from algorithms.mediapipe.segmenter import BackgroundChanger
 
             model_path = kwargs.get("model_path", MEDIAPIPE_MODEL_PATH)
@@ -72,18 +61,22 @@ class BackgroundChangerFactory:
 
         elif self.algorithm_id in (3, 4, 5, 6, 7):
             from algorithms.cv_classic.segmenter import CVClassicBackgroundChanger
-            method_map = {3: "MOG2", 4: "KNN", 5: "GrabCut", 6: "LOBSTER", 7: "SuBSENSE"}
+
+            method_map = {
+                3: "MOG2", 4: "KNN", 5: "GrabCut", 6: "LOBSTER", 7: "SuBSENSE"
+            }
             self.changer = CVClassicBackgroundChanger(method=method_map[self.algorithm_id])
 
         else:
-            # 默认使用MediaPipe
-            from algorithms.mediapipe.segmenter import BackgroundChanger
+            print(f"未知算法ID {self.algorithm_id}，回退到{OPTIMAL_ALGORITHM_NAME}")
+            self._init_optimal_changer()
 
-            print(f"未知算法ID {self.algorithm_id}，使用默认MediaPipe")
-            model_path = kwargs.get("model_path", MEDIAPIPE_MODEL_PATH)
-            self.changer = BackgroundChanger(model_path=model_path)
-            self.algorithm_id = 1
-            self.algorithm_name = "mediapipe"
+    def _init_optimal_changer(self):
+        from algorithms.cv_classic.segmenter import CVClassicBackgroundChanger
+
+        self.algorithm_id = OPTIMAL_ALGORITHM_ID
+        self.algorithm_name = OPTIMAL_ALGORITHM_NAME
+        self.changer = CVClassicBackgroundChanger(method=OPTIMAL_ALGORITHM_NAME)
 
     def load_backgrounds(self, folder_path=None):
         """加载背景图片"""
@@ -156,12 +149,12 @@ class BackgroundChangerFactory:
         self.changer.backgrounds = value
 
 
-def create_background_changer(algorithm_id=1, **kwargs):
+def create_background_changer(algorithm_id=OPTIMAL_ALGORITHM_ID, **kwargs):
     """
     创建背景替换器的便捷函数
 
     Args:
-        algorithm_id (int): 0=MODNet, 1=MediaPipe, 2=RVM
+        algorithm_id (int): 默认 MOG2；旧实验脚本可显式传入其它算法 ID。
         **kwargs: 算法特定参数
 
     Returns:
@@ -170,13 +163,6 @@ def create_background_changer(algorithm_id=1, **kwargs):
     return BackgroundChangerFactory(algorithm_id, **kwargs)
 
 
-# 使用示例
 if __name__ == "__main__":
-    # 创建MODNet背景替换器
-    modnet_changer = create_background_changer(algorithm_id=0)
-
-    # 创建MediaPipe背景替换器
-    mediapipe_changer = create_background_changer(algorithm_id=1)
-
-    print(f"MODNet changer: {modnet_changer.algorithm_name}")
-    print(f"MediaPipe changer: {mediapipe_changer.algorithm_name}")
+    changer = create_background_changer()
+    print(f"Active changer: {changer.algorithm_name}")

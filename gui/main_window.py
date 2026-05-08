@@ -24,22 +24,12 @@ from config.constants import (
     RECORDING_DIR,
     DEFAULT_WINDOW_WIDTH,
     DEFAULT_WINDOW_HEIGHT,
+    OPTIMAL_ALGORITHM_NAME,
     COLOR_SUCCESS,
     COLOR_WARNING,
     COLOR_ERROR,
     COLOR_INFO,
 )
-
-ALGORITHM_OPTIONS = [
-    (0, "MODNet"),
-    (1, "MediaPipe"),
-    (2, "RVM"),
-    (3, "MOG2"),
-    (4, "KNN"),
-    (5, "GrabCut"),
-    (6, "LOBSTER"),
-    (7, "SuBSENSE"),
-]
 
 # ── 颜色 / 字体常量 ──────────────────────────────────────
 BG_MAIN    = "#f8f9fa"
@@ -83,13 +73,13 @@ def _make_btn(parent, text, command, color_key, **kw):
 class BackgroundChangerGUI:
     def __init__(self, root: tk.Tk, algorithm_id: int = 1):
         self.root = root
-        self.root.title("🎨 背景切换工具")
+        self.root.title(f"背景切换上位机 - {OPTIMAL_ALGORITHM_NAME}")
         self.root.geometry(f"{DEFAULT_WINDOW_WIDTH}x{DEFAULT_WINDOW_HEIGHT}")
         self.root.configure(bg=BG_MAIN)
         self.root.minsize(700, 480)
 
-        self.current_algorithm_id = algorithm_id
         self.background_changer = create_background_changer(algorithm_id=algorithm_id)
+        self.current_algorithm_id = self.background_changer.algorithm_id
         self.is_recording = False
         self.current_frame = None
         self.original_frame = None
@@ -143,22 +133,20 @@ class BackgroundChangerGUI:
     def _build_panel(self, panel: tk.Frame):
         pad = dict(padx=10, pady=3, fill="x")
 
-        # ── 算法选择 ──
+        # ── 当前算法 ──
         tk.Label(panel, text="🤖 分割算法", font=FONT_LABEL,
                  bg=BG_PANEL, fg=FG_TITLE).pack(anchor="w", padx=10, pady=(12, 2))
 
-        self.algo_var = tk.StringVar()
-        self.algo_combo = ttk.Combobox(
-            panel, textvariable=self.algo_var,
-            values=[name for _, name in ALGORITHM_OPTIONS],
-            state="readonly", font=FONT_COMBO, width=22
-        )
-        # 设置当前算法
-        idx = next((i for i, (aid, _) in enumerate(ALGORITHM_OPTIONS)
-                    if aid == self.current_algorithm_id), 1)
-        self.algo_combo.current(idx)
-        self.algo_combo.pack(**pad)
-        self.algo_combo.bind("<<ComboboxSelected>>", self._on_algo_changed)
+        tk.Label(
+            panel, text=OPTIMAL_ALGORITHM_NAME,
+            font=FONT_COMBO, bg="#eef3f8", fg=FG_TITLE,
+            anchor="center", relief="flat", padx=8, pady=5
+        ).pack(padx=10, pady=3, fill="x")
+
+        tk.Label(
+            panel, text="已固定为当前最佳算法",
+            font=("Microsoft YaHei", 8), bg=BG_PANEL, fg=COLOR_INFO
+        ).pack(anchor="w", padx=10, pady=(0, 3))
 
         ttk.Separator(panel, orient="horizontal").pack(fill="x", padx=8, pady=6)
 
@@ -251,51 +239,6 @@ class BackgroundChangerGUI:
             self._photo = photo     # 防止 GC
         except Exception:
             pass
-
-    # ── 算法切换 ──────────────────────────────────────────────
-
-    def _on_algo_changed(self, event=None):
-        idx = self.algo_combo.current()
-        algorithm_id, algorithm_name = ALGORITHM_OPTIONS[idx]
-        if algorithm_id == self.current_algorithm_id:
-            return
-
-        if self.is_recording:
-            self.thread.stop_recording()
-            self.is_recording = False
-            self.btn_record.config(text="⏺️ 开始录屏",
-                                   bg=BTN_COLORS["rec_start"][0])
-            self.btn_record._normal_bg = BTN_COLORS["rec_start"][0]
-
-        self.show_status(f"正在切换到 {algorithm_name}...", "info")
-
-        # 保存背景
-        current_backgrounds = list(self.background_changer.backgrounds)
-        current_bg_index = self.background_changer.current_background_index
-
-        # 停止旧线程
-        self.thread.stop()
-        self.thread.join(timeout=2)
-
-        # 创建新切换器
-        self.current_algorithm_id = algorithm_id
-        self.background_changer = create_background_changer(algorithm_id=algorithm_id)
-
-        # 迁移背景
-        self.background_changer.changer.backgrounds = current_backgrounds
-        self.background_changer.changer.current_background_index = (
-            min(current_bg_index, len(current_backgrounds) - 1)
-            if current_backgrounds else 0
-        )
-
-        # 重启线程
-        self._start_thread()
-
-        # 重置摄像头按钮
-        self.btn_open_cam.config(state="disabled")
-        self.btn_close_cam.config(state="normal")
-
-        self.show_status(f"已切换到 {algorithm_name} 算法", "success")
 
     # ── 背景管理 ──────────────────────────────────────────────
 

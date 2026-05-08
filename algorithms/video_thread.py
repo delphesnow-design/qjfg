@@ -5,7 +5,7 @@ import queue
 import time
 import os
 
-from config.constants import CAMERA_FLIP_HORIZONTAL
+from config.constants import CAMERA_FLIP_HORIZONTAL, VIRTUAL_CAMERA_FPS
 
 
 class VideoThread(threading.Thread):
@@ -29,6 +29,16 @@ class VideoThread(threading.Thread):
         self.recording_fps = 30
         self.frame_size = (640, 480)
 
+        # 虚拟摄像头输出
+        self.virtual_camera_enabled = False
+        self.virtual_camera = None
+        self.virtual_camera_size = None
+        self.virtual_camera_device = ""
+        self.virtual_camera_error = ""
+        self.virtual_camera_fps = VIRTUAL_CAMERA_FPS
+        self._virtual_camera_module = None
+        self._virtual_camera_lock = threading.Lock()
+
         self.show_original = False
 
     def run(self):
@@ -48,6 +58,7 @@ class VideoThread(threading.Thread):
             if self.camera_paused:
                 if self._last_frame is not None:
                     self._put_frame(self.frame_queue, self._last_frame)
+                    self._send_virtual_camera_frame(self._last_frame)
                 time.sleep(0.033)
                 continue
 
@@ -81,9 +92,12 @@ class VideoThread(threading.Thread):
                     out = cv2.resize(out, self.frame_size)
                 self.video_writer.write(out)
 
+            self._send_virtual_camera_frame(processed_frame)
+
         cap.release()
         if self.video_writer is not None:
             self.video_writer.release()
+        self._close_virtual_camera()
 
     @staticmethod
     def _put_frame(q: queue.Queue, frame: np.ndarray):
@@ -125,6 +139,42 @@ class VideoThread(threading.Thread):
             self.video_writer = None
         return True
 
+    def start_virtual_camera(self) -> bool:
+        with self._virtual_camera_lock:
+            if self.virtual_camera_enabled:
+                return True
+
+            try:
+                import pyvirtualcam
+            except ImportError as e:
+                self.virtual_camera_error = (
+                    "pyvirtualcam 未安装，请重新运行 install_runtime.bat"
+                )
+                print(f"虚拟摄像头初始化失败: {e}")
+                return False
+
+            self._virtual_camera_module = pyvirtualcam
+            self.virtual_camera_enabled = True
+            self.virtual_camera_error = ""
+            self.virtual_camera_device = ""
+            return True
+
+    def stop_virtual_camera(self) -> bool:
+        with self._virtual_camera_lock:
+            was_enabled = self.virtual_camera_enabled
+            self.virtual_camera_enabled = False
+            self._close_virtual_camera_locked()
+            return was_enabled
+
+    def get_virtual_camera_status(self):
+        with self._virtual_camera_lock:
+            return {
+                "enabled": self.virtual_camera_enabled,
+                "active": self.virtual_camera is not None,
+                "device": self.virtual_camera_device,
+                "error": self.virtual_camera_error,
+            }
+
     def open_camera(self):
         self.camera_paused = False
 
@@ -136,3 +186,84 @@ class VideoThread(threading.Thread):
 
     def stop(self):
         self._run_flag = False
+
+    def _send_virtual_camera_frame(self, frame: np.ndarray):
+        with self._virtual_camera_lock:
+            if not self.virtual_camera_enabled:
+                return
+
+            if not self._ensure_virtual_camera_locked(frame):
+                return
+
+            try:
+                out = self._fit_virtual_camera_frame_locked(frame)
+                self.virtual_camera.send(out)
+            except Exception as e:
+                self.virtual_camera_error = self._format_virtual_camera_error(e)
+                print(f"虚拟摄像头发送失败: {e}")
+                self.virtual_camera_enabled = False
+                self._close_virtual_camera_locked()
+
+    def _ensure_virtual_camera_locked(self, frame: np.ndarray) -> bool:
+        if self.virtual_camera is not None:
+            return True
+
+        if self._virtual_camera_module is None:
+            return False
+
+        height, width = frame.shape[:2]
+        try:
+            self.virtual_camera = self._virtual_camera_module.Camera(
+                width=width,
+                height=height,
+                fps=self.virtual_camera_fps,
+                fmt=self._virtual_camera_module.PixelFormat.BGR,
+                print_fps=False,
+            )
+            self.virtual_camera_size = (width, height)
+            self.virtual_camera_device = self.virtual_camera.device
+            self.virtual_camera_error = ""
+            print(f"虚拟摄像头已启动: {self.virtual_camera_device}")
+            return True
+        except Exception as e:
+            self.virtual_camera_error = self._format_virtual_camera_error(e)
+            print(f"虚拟摄像头初始化失败: {e}")
+            self.virtual_camera_enabled = False
+            self._close_virtual_camera_locked()
+            return False
+
+    @staticmethod
+    def _format_virtual_camera_error(error: Exception) -> str:
+        raw = str(error)
+        missing_backend_markers = (
+            "OBS Virtual Camera device not found",
+            "No camera registered",
+            "backend",
+        )
+        if any(marker in raw for marker in missing_backend_markers):
+            return (
+                "未检测到系统虚拟摄像头设备。请先安装 OBS Studio/OBS Virtual Camera "
+                "或 Unity Capture，重启上位机后再开启虚拟摄像头。"
+            )
+        return raw
+
+    def _fit_virtual_camera_frame_locked(self, frame: np.ndarray) -> np.ndarray:
+        width, height = self.virtual_camera_size
+        if frame.shape[1] == width and frame.shape[0] == height:
+            return np.ascontiguousarray(frame)
+        resized = cv2.resize(frame, (width, height), interpolation=cv2.INTER_AREA)
+        return np.ascontiguousarray(resized)
+
+    def _close_virtual_camera(self):
+        with self._virtual_camera_lock:
+            self._close_virtual_camera_locked()
+
+    def _close_virtual_camera_locked(self):
+        if self.virtual_camera is not None:
+            try:
+                self.virtual_camera.close()
+            except Exception as e:
+                print(f"虚拟摄像头关闭失败: {e}")
+        self.virtual_camera = None
+        self.virtual_camera_size = None
+        self.virtual_camera_device = ""

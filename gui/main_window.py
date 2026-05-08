@@ -24,6 +24,7 @@ from config.constants import (
     RECORDING_DIR,
     DEFAULT_WINDOW_WIDTH,
     DEFAULT_WINDOW_HEIGHT,
+    OPTIMAL_ALGORITHM_ID,
     OPTIMAL_ALGORITHM_NAME,
     COLOR_SUCCESS,
     COLOR_WARNING,
@@ -50,9 +51,22 @@ BTN_COLORS = {
     "screenshot": ("#27ae60", "#2ecc71"),
     "rec_start":  ("#e74c3c", "#c0392b"),
     "rec_stop":   ("#c0392b", "#e74c3c"),
+    "virtual_start": ("#8e44ad", "#9b59b6"),
+    "virtual_stop":  ("#6c3483", "#8e44ad"),
     "upload":     ("#3498db", "#2980b9"),
     "exit":       ("#95a5a6", "#7f8c8d"),
 }
+
+ALGORITHM_OPTIONS = [
+    (0, "MODNet"),
+    (1, "MediaPipe"),
+    (2, "RVM"),
+    (3, "MOG2"),
+    (4, "KNN"),
+    (5, "GrabCut"),
+    (6, "LOBSTER"),
+    (7, "SuBSENSE"),
+]
 
 
 def _make_btn(parent, text, command, color_key, **kw):
@@ -71,7 +85,7 @@ def _make_btn(parent, text, command, color_key, **kw):
 
 
 class BackgroundChangerGUI:
-    def __init__(self, root: tk.Tk, algorithm_id: int = 1):
+    def __init__(self, root: tk.Tk, algorithm_id: int = OPTIMAL_ALGORITHM_ID):
         self.root = root
         self.root.title(f"背景切换上位机 - {OPTIMAL_ALGORITHM_NAME}")
         self.root.geometry(f"{DEFAULT_WINDOW_WIDTH}x{DEFAULT_WINDOW_HEIGHT}")
@@ -80,10 +94,14 @@ class BackgroundChangerGUI:
 
         self.background_changer = create_background_changer(algorithm_id=algorithm_id)
         self.current_algorithm_id = self.background_changer.algorithm_id
+        self.root.title(f"背景切换上位机 - {self.background_changer.algorithm_name}")
         self.is_recording = False
+        self.virtual_camera_requested = False
+        self._virtual_camera_announced_device = ""
         self.current_frame = None
         self.original_frame = None
         self._photo = None          # 保持 PhotoImage 引用，防止 GC 回收
+        self._poll_job = None
 
         self._build_ui()
         self._start_thread()
@@ -133,18 +151,25 @@ class BackgroundChangerGUI:
     def _build_panel(self, panel: tk.Frame):
         pad = dict(padx=10, pady=3, fill="x")
 
-        # ── 当前算法 ──
+        # ── 算法选择 ──
         tk.Label(panel, text="🤖 分割算法", font=FONT_LABEL,
                  bg=BG_PANEL, fg=FG_TITLE).pack(anchor="w", padx=10, pady=(12, 2))
 
-        tk.Label(
-            panel, text=OPTIMAL_ALGORITHM_NAME,
-            font=FONT_COMBO, bg="#eef3f8", fg=FG_TITLE,
-            anchor="center", relief="flat", padx=8, pady=5
-        ).pack(padx=10, pady=3, fill="x")
+        self.algo_var = tk.StringVar()
+        self.algo_combo = ttk.Combobox(
+            panel,
+            textvariable=self.algo_var,
+            values=[name for _, name in ALGORITHM_OPTIONS],
+            state="readonly",
+            font=FONT_COMBO,
+            width=22,
+        )
+        self.algo_combo.pack(**pad)
+        self.algo_combo.bind("<<ComboboxSelected>>", self._on_algo_changed)
+        self._set_algorithm_combo(self.current_algorithm_id)
 
         tk.Label(
-            panel, text="已固定为当前最佳算法",
+            panel, text=f"默认推荐：{OPTIMAL_ALGORITHM_NAME}",
             font=("Microsoft YaHei", 8), bg=BG_PANEL, fg=COLOR_INFO
         ).pack(anchor="w", padx=10, pady=(0, 3))
 
@@ -187,6 +212,10 @@ class BackgroundChangerGUI:
             panel, "⏺️ 开始录屏", self.toggle_recording, "rec_start")
         self.btn_record.pack(**pad)
 
+        self.btn_virtual_camera = _make_btn(
+            panel, "🎥 开启虚拟摄像头", self.toggle_virtual_camera, "virtual_start")
+        self.btn_virtual_camera.pack(**pad)
+
         _make_btn(panel, "🚪 退出", self.close_application, "exit").pack(**pad)
 
         # 弹性空间
@@ -197,11 +226,25 @@ class BackgroundChangerGUI:
     def _start_thread(self):
         self.thread = VideoThread(self.background_changer)
         self.thread.start()
-        # 每 33ms 轮询一次帧队列（~30fps）
-        self.root.after(33, self._poll_frame)
+        self._schedule_poll()
+
+    def _schedule_poll(self):
+        if self._poll_job is None:
+            # 每 33ms 轮询一次帧队列（~30fps）
+            self._poll_job = self.root.after(33, self._poll_frame)
+
+    def _cancel_poll(self):
+        if self._poll_job is not None:
+            try:
+                self.root.after_cancel(self._poll_job)
+            except Exception:
+                pass
+            self._poll_job = None
 
     def _poll_frame(self):
         """主线程定时拉取视频帧并更新显示"""
+        self._poll_job = None
+
         try:
             frame = self.thread.frame_queue.get_nowait()
             self.current_frame = frame.copy()
@@ -215,8 +258,10 @@ class BackgroundChangerGUI:
         except Exception:
             pass
 
+        self._sync_virtual_camera_status()
+
         if self._running:
-            self.root.after(33, self._poll_frame)
+            self._schedule_poll()
 
     @property
     def _running(self):
@@ -239,6 +284,90 @@ class BackgroundChangerGUI:
             self._photo = photo     # 防止 GC
         except Exception:
             pass
+
+    # ── 算法切换 ──────────────────────────────────────────────
+
+    def _on_algo_changed(self, event=None):
+        idx = self.algo_combo.current()
+        if idx < 0 or idx >= len(ALGORITHM_OPTIONS):
+            return
+
+        algorithm_id, algorithm_name = ALGORITHM_OPTIONS[idx]
+        if algorithm_id == self.current_algorithm_id:
+            return
+
+        self.show_status(f"正在切换到 {algorithm_name}...", "info")
+
+        camera_was_paused = self.thread.camera_paused
+        virtual_was_requested = self.virtual_camera_requested
+        current_backgrounds = list(self.background_changer.backgrounds)
+        current_bg_index = self.background_changer.current_background_index
+
+        if self.is_recording:
+            self.thread.stop_recording()
+            self.is_recording = False
+            self._reset_record_button()
+
+        if virtual_was_requested:
+            self.thread.stop_virtual_camera()
+            self._virtual_camera_announced_device = ""
+
+        self._cancel_poll()
+        self.thread.stop()
+        self.thread.join(timeout=2)
+
+        self.background_changer = create_background_changer(algorithm_id=algorithm_id)
+        self.current_algorithm_id = self.background_changer.algorithm_id
+        self.root.title(f"背景切换上位机 - {self.background_changer.algorithm_name}")
+
+        self.background_changer.backgrounds = current_backgrounds
+        self.background_changer.current_background_index = (
+            min(current_bg_index, len(current_backgrounds) - 1)
+            if current_backgrounds else 0
+        )
+        self._set_algorithm_combo(self.current_algorithm_id)
+        self.update_background_list()
+
+        self._start_thread()
+        if camera_was_paused:
+            self.thread.close_camera()
+            self.btn_open_cam.config(state="normal")
+            self.btn_close_cam.config(state="disabled")
+        else:
+            self.btn_open_cam.config(state="disabled")
+            self.btn_close_cam.config(state="normal")
+
+        if virtual_was_requested:
+            if self.thread.start_virtual_camera():
+                self.virtual_camera_requested = True
+                self.show_status(
+                    f"已切换到 {self.background_changer.algorithm_name}，正在恢复虚拟摄像头输出",
+                    "info",
+                )
+            else:
+                self.virtual_camera_requested = False
+                self._reset_virtual_camera_button()
+                status = self.thread.get_virtual_camera_status()
+                self.show_status(status.get("error") or "虚拟摄像头恢复失败", "error")
+        else:
+            self.show_status(f"已切换到 {self.background_changer.algorithm_name}", "success")
+
+    def _set_algorithm_combo(self, algorithm_id):
+        if not hasattr(self, "algo_combo"):
+            return
+        idx = next(
+            (i for i, (option_id, _) in enumerate(ALGORITHM_OPTIONS)
+             if option_id == algorithm_id),
+            0,
+        )
+        self.algo_combo.current(idx)
+
+    def _reset_record_button(self):
+        self.btn_record.config(
+            text="⏺️ 开始录屏",
+            bg=BTN_COLORS["rec_start"][0],
+        )
+        self.btn_record._normal_bg = BTN_COLORS["rec_start"][0]
 
     # ── 背景管理 ──────────────────────────────────────────────
 
@@ -353,12 +482,64 @@ class BackgroundChangerGUI:
         else:
             if self.thread.stop_recording():
                 self.is_recording = False
-                self.btn_record.config(text="⏺️ 开始录屏",
-                                       bg=BTN_COLORS["rec_start"][0])
-                self.btn_record._normal_bg = BTN_COLORS["rec_start"][0]
+                self._reset_record_button()
                 self.show_status("录屏已停止并保存", "success")
             else:
                 self.show_status("无法停止录屏", "error")
+
+    # ── 虚拟摄像头 ────────────────────────────────────────────
+
+    def toggle_virtual_camera(self):
+        if not self.virtual_camera_requested:
+            if self.thread.start_virtual_camera():
+                self.virtual_camera_requested = True
+                self._virtual_camera_announced_device = ""
+                self.btn_virtual_camera.config(
+                    text="🎥 停止虚拟摄像头",
+                    bg=BTN_COLORS["virtual_stop"][0]
+                )
+                self.btn_virtual_camera._normal_bg = BTN_COLORS["virtual_stop"][0]
+                self.show_status("正在启动虚拟摄像头输出...", "info")
+            else:
+                status = self.thread.get_virtual_camera_status()
+                self.show_status(
+                    status.get("error") or "无法启动虚拟摄像头", "error"
+                )
+        else:
+            self.thread.stop_virtual_camera()
+            self.virtual_camera_requested = False
+            self._virtual_camera_announced_device = ""
+            self._reset_virtual_camera_button()
+            self.show_status("虚拟摄像头输出已停止", "info")
+
+    def _sync_virtual_camera_status(self):
+        if not self.virtual_camera_requested:
+            return
+
+        status = self.thread.get_virtual_camera_status()
+        if not status["enabled"]:
+            self.virtual_camera_requested = False
+            self._virtual_camera_announced_device = ""
+            self._reset_virtual_camera_button()
+            self.show_status(
+                status.get("error") or "虚拟摄像头输出已停止", "error"
+            )
+            return
+
+        device = status.get("device") or ""
+        if status["active"] and device != self._virtual_camera_announced_device:
+            self._virtual_camera_announced_device = device
+            if device:
+                self.show_status(f"虚拟摄像头已启动: {device}", "success")
+            else:
+                self.show_status("虚拟摄像头已启动", "success")
+
+    def _reset_virtual_camera_button(self):
+        self.btn_virtual_camera.config(
+            text="🎥 开启虚拟摄像头",
+            bg=BTN_COLORS["virtual_start"][0]
+        )
+        self.btn_virtual_camera._normal_bg = BTN_COLORS["virtual_start"][0]
 
     # ── 状态栏 ──────────────────────────────────────────────
 
@@ -375,5 +556,7 @@ class BackgroundChangerGUI:
     # ── 退出 ──────────────────────────────────────────────────
 
     def close_application(self):
+        self._cancel_poll()
+        self.thread.stop_virtual_camera()
         self.thread.stop()
         self.root.destroy()

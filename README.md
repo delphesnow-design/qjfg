@@ -5,9 +5,11 @@
 ## 功能特点
 
 - 默认使用直播压力测试综合最优算法：RVM
+- 支持界面切换 8 种算法：MODNet / MediaPipe / RVM / MOG2 / KNN / GrabCut / LOBSTER / SuBSENSE
 - 实时背景替换：无需绿幕，摄像头画面实时替换背景
 - 背景资源管理：内置背景、上传背景、动态切换
 - 截图与录屏：保存到 `assets/screenshots/` 和 `assets/recordings/`
+- 虚拟摄像头输出：将处理后画面输出到系统虚拟摄像头，供 Zoom、Teams、腾讯会议等软件选择
 - 实时视频优先：RVM 在真实人像直播模拟中综合分最高，速度接近传统算法
 
 ## 快速开始
@@ -46,7 +48,9 @@ pip install -r requirements.txt
 models/rvm_mobilenetv3_fp32.onnx
 ```
 
-MODNet、MediaPipe 和传统 CV 算法仍保留在 `algorithms/` 中，便于复查旧实验报告和重新评估。
+MODNet、MediaPipe 和传统 CV 算法仍保留在 `algorithms/` 中，可在上位机右侧「分割算法」下拉框中切换，便于现场对比、复查旧实验报告和重新评估。
+
+虚拟摄像头输出依赖 `pyvirtualcam`，并要求系统里已有虚拟摄像头后端。Windows 上可安装 OBS Studio 的 OBS Virtual Camera，或安装 Unity Capture 等兼容后端。若未安装后端，程序会提示未检测到系统虚拟摄像头设备。
 
 ## 运行
 
@@ -60,11 +64,19 @@ Windows 下也可以直接双击一键启动脚本：
 start_upper_computer.bat
 ```
 
-默认算法固定在 `config/constants.py`：
+默认算法在 `config/constants.py` 中配置，启动后仍可在界面切换：
 
 ```python
 OPTIMAL_ALGORITHM_ID = 2
 OPTIMAL_ALGORITHM_NAME = "RVM"
+```
+
+启动上位机后，点击右侧「开启虚拟摄像头」，再到第三方会议软件的摄像头列表中选择对应虚拟摄像头设备。
+
+可以先单独检查虚拟摄像头后端是否可用：
+
+```bash
+python scripts/debug/check_virtual_camera_backend.py
 ```
 
 ## 项目结构
@@ -83,7 +95,7 @@ qjfg/
 │   ├── mediapipe/
 │   ├── modnet/
 │   └── rvm/
-├── config/                     # 项目路径、固定算法、界面参数
+├── config/                     # 项目路径、默认算法、界面参数
 │   └── constants.py
 ├── gui/                        # tkinter 桌面界面
 ├── utils/                      # 文件与图像工具
@@ -114,6 +126,7 @@ python scripts/evaluation/webcam_experiment.py
 python scripts/evaluation/live_stream_simulation_report.py
 python scripts/evaluation/ppm100_eval.py
 python scripts/evaluation/merge_ppm100_summary.py
+python scripts/debug/check_virtual_camera_backend.py
 python tests/manual/smoke_factory.py
 ```
 
@@ -135,5 +148,6 @@ $env:PPM100_DIR="D:\datasets\PPM-100"
 
 - 背景为空：确认 `assets/backgrounds/` 中存在支持格式图片
 - RVM 初始化失败：确认已安装 `onnxruntime`，且 `models/rvm_mobilenetv3_fp32.onnx` 存在
+- 虚拟摄像头启动失败：确认已安装 `pyvirtualcam`，并且系统已安装 OBS Virtual Camera 或其他兼容虚拟摄像头设备；安装后重启上位机，再运行 `python scripts/debug/check_virtual_camera_backend.py` 检查
 - PPM-100 评估找不到数据：确认数据集目录或 `PPM100_DIR` 环境变量
 - 摄像头无法打开：确认摄像头未被其他程序占用，并检查系统摄像头权限

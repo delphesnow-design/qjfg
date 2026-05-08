@@ -49,7 +49,7 @@ if errorlevel 1 goto install_failed
 
 echo.
 echo Verifying runtime imports...
-"%PYTHON_EXE%" -c "import cv2, numpy, PIL, onnxruntime, mediapipe, torch, torchvision, matplotlib, psutil; print('runtime imports ok')"
+"%PYTHON_EXE%" -c "import cv2, numpy, PIL, onnxruntime, pyvirtualcam, mediapipe, torch, torchvision, matplotlib, psutil; print('runtime imports ok')"
 if errorlevel 1 goto install_failed
 
 echo.

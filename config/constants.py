@@ -37,7 +37,7 @@ MODEL_PATH = MEDIAPIPE_MODEL_PATH
 
 # =============== 算法选择参数 ===============
 # 当前上位机默认使用直播压力测试综合最优的 RVM 算法。
-# 旧算法实现保留在 algorithms/ 中，用于历史对比和实验复查。
+# GUI 中仍可切换 8 种算法，用于现场对比、无模型环境和实验复查。
 # =========================================
 OPTIMAL_ALGORITHM_ID = 2
 OPTIMAL_ALGORITHM_NAME = "RVM"
@@ -56,6 +56,9 @@ DEFAULT_WINDOW_HEIGHT = 600
 # 录制参数
 RECORDING_FPS = 30
 VIDEO_CODEC = "XVID"
+
+# 虚拟摄像头输出参数
+VIRTUAL_CAMERA_FPS = 30
 
 # 摄像头画面方向
 # 部分 Windows 摄像头驱动返回镜像画面，上位机默认水平翻转一次进行纠正。

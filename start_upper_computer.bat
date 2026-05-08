@@ -13,7 +13,7 @@ echo Project: %CD%
 echo Python:  %PYTHON_EXE%
 echo.
 
-"%PYTHON_EXE%" -c "import cv2, numpy, PIL, onnxruntime" >nul 2>nul
+"%PYTHON_EXE%" -c "import cv2, numpy, PIL, onnxruntime, pyvirtualcam" >nul 2>nul
 if errorlevel 1 (
     echo Missing runtime dependencies.
     echo Please run:

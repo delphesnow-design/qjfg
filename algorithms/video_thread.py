@@ -5,6 +5,8 @@ import queue
 import time
 import os
 
+from config.constants import CAMERA_FLIP_HORIZONTAL
+
 
 class VideoThread(threading.Thread):
     """视频处理线程（tkinter 版，使用 queue 传帧）"""
@@ -53,6 +55,9 @@ class VideoThread(threading.Thread):
             if not ret:
                 time.sleep(0.01)
                 continue
+
+            if CAMERA_FLIP_HORIZONTAL:
+                frame = cv2.flip(frame, 1)
 
             self.frame_size = (frame.shape[1], frame.shape[0])
 

@@ -57,6 +57,10 @@ DEFAULT_WINDOW_HEIGHT = 600
 RECORDING_FPS = 30
 VIDEO_CODEC = "XVID"
 
+# 摄像头画面方向
+# 部分 Windows 摄像头驱动返回镜像画面，上位机默认水平翻转一次进行纠正。
+CAMERA_FLIP_HORIZONTAL = True
+
 # 状态消息持续时间（毫秒）
 STATUS_DURATION = 3000
 

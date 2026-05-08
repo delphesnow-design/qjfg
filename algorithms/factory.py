@@ -11,7 +11,7 @@ from config.constants import (
 class BackgroundChangerFactory:
     """背景替换算法工厂。
 
-    当前上位机运行链路默认使用 benchmark 最优的 MOG2 算法。显式传入
+    当前上位机运行链路默认使用直播压力测试综合最优的 RVM 算法。显式传入
     旧算法 ID 时仍可复现实验脚本，避免历史对比报告失真。
     """
 
@@ -25,7 +25,7 @@ class BackgroundChangerFactory:
         初始化背景替换器
 
         Args:
-            algorithm_id (int): 默认 MOG2；旧实验脚本可显式传入其它算法 ID。
+            algorithm_id (int): 默认 RVM；旧实验脚本可显式传入其它算法 ID。
             **kwargs: 算法特定参数
         """
         self.algorithm_id = algorithm_id
@@ -50,8 +50,8 @@ class BackgroundChangerFactory:
             model_path = kwargs.get("model_path", RVM_MODEL_PATH)
             self.changer = RVMBackgroundChanger(model_path=model_path)
             if self.changer.session is None:
-                print(f"警告: RVM初始化失败，回退到{OPTIMAL_ALGORITHM_NAME}")
-                self._init_optimal_changer()
+                print("警告: RVM初始化失败，回退到MOG2")
+                self._init_mog2_fallback()
 
         elif self.algorithm_id == 1:
             from algorithms.mediapipe.segmenter import BackgroundChanger
@@ -72,11 +72,16 @@ class BackgroundChangerFactory:
             self._init_optimal_changer()
 
     def _init_optimal_changer(self):
-        from algorithms.cv_classic.segmenter import CVClassicBackgroundChanger
-
         self.algorithm_id = OPTIMAL_ALGORITHM_ID
         self.algorithm_name = OPTIMAL_ALGORITHM_NAME
-        self.changer = CVClassicBackgroundChanger(method=OPTIMAL_ALGORITHM_NAME)
+        self._initialize_changer()
+
+    def _init_mog2_fallback(self):
+        from algorithms.cv_classic.segmenter import CVClassicBackgroundChanger
+
+        self.algorithm_id = 3
+        self.algorithm_name = "MOG2"
+        self.changer = CVClassicBackgroundChanger(method="MOG2")
 
     def load_backgrounds(self, folder_path=None):
         """加载背景图片"""
@@ -154,7 +159,7 @@ def create_background_changer(algorithm_id=OPTIMAL_ALGORITHM_ID, **kwargs):
     创建背景替换器的便捷函数
 
     Args:
-        algorithm_id (int): 默认 MOG2；旧实验脚本可显式传入其它算法 ID。
+        algorithm_id (int): 默认 RVM；旧实验脚本可显式传入其它算法 ID。
         **kwargs: 算法特定参数
 
     Returns:

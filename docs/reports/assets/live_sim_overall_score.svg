@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="860" height="442" viewBox="0 0 860 442">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="24" y="34" font-size="21" font-family="Arial, sans-serif" font-weight="700">直播模拟综合分（越高越好）</text>
+<line x1="150" y1="50" x2="818" y2="50" stroke="#d7dde5"/>
+<text x="136" y="74" text-anchor="end" font-size="14" font-family="Arial, sans-serif" fill="#273142">RVM</text>
+<rect x="150" y="58" width="668.0" height="23" rx="4" fill="#2f8f5b"/>
+<text x="734.0" y="74" font-size="13" font-family="Arial, sans-serif" fill="#273142">96.24</text>
+<text x="136" y="118" text-anchor="end" font-size="14" font-family="Arial, sans-serif" fill="#273142">MODNet</text>
+<rect x="150" y="102" width="641.2" height="23" rx="4" fill="#2f8f5b"/>
+<text x="734.0" y="118" font-size="13" font-family="Arial, sans-serif" fill="#273142">92.38</text>
+<text x="136" y="162" text-anchor="end" font-size="14" font-family="Arial, sans-serif" fill="#273142">KNN</text>
+<rect x="150" y="146" width="627.9" height="23" rx="4" fill="#2f8f5b"/>
+<text x="734.0" y="162" font-size="13" font-family="Arial, sans-serif" fill="#273142">90.46</text>
+<text x="136" y="206" text-anchor="end" font-size="14" font-family="Arial, sans-serif" fill="#273142">MOG2</text>
+<rect x="150" y="190" width="627.8" height="23" rx="4" fill="#2f8f5b"/>
+<text x="734.0" y="206" font-size="13" font-family="Arial, sans-serif" fill="#273142">90.46</text>
+<text x="136" y="250" text-anchor="end" font-size="14" font-family="Arial, sans-serif" fill="#273142">LOBSTER</text>
+<rect x="150" y="234" width="616.6" height="23" rx="4" fill="#2f8f5b"/>
+<text x="734.0" y="250" font-size="13" font-family="Arial, sans-serif" fill="#273142">88.84</text>
+<text x="136" y="294" text-anchor="end" font-size="14" font-family="Arial, sans-serif" fill="#273142">SuBSENSE</text>
+<rect x="150" y="278" width="588.4" height="23" rx="4" fill="#2f8f5b"/>
+<text x="734.0" y="294" font-size="13" font-family="Arial, sans-serif" fill="#273142">84.78</text>
+<text x="136" y="338" text-anchor="end" font-size="14" font-family="Arial, sans-serif" fill="#273142">GrabCut</text>
+<rect x="150" y="322" width="523.2" height="23" rx="4" fill="#2f8f5b"/>
+<text x="681.2" y="338" font-size="13" font-family="Arial, sans-serif" fill="#273142">75.37</text>
+<text x="136" y="382" text-anchor="end" font-size="14" font-family="Arial, sans-serif" fill="#273142">MediaPipe</text>
+<rect x="150" y="366" width="485.7" height="23" rx="4" fill="#2f8f5b"/>
+<text x="643.7" y="382" font-size="13" font-family="Arial, sans-serif" fill="#273142">69.98</text>
+</svg>

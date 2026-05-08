@@ -1,14 +1,14 @@
 # 实时背景切换工具
 
-基于 MOG2 背景建模的实时视频背景替换桌面上位机，使用 Python + tkinter 构建。
+基于 RVM（Robust Video Matting）的实时视频背景替换桌面上位机，使用 Python + tkinter 构建。
 
 ## 功能特点
 
-- 固定使用当前 benchmark 最优算法：MOG2
+- 默认使用直播压力测试综合最优算法：RVM
 - 实时背景替换：无需绿幕，摄像头画面实时替换背景
 - 背景资源管理：内置背景、上传背景、动态切换
 - 截图与录屏：保存到 `assets/screenshots/` 和 `assets/recordings/`
-- 轻量依赖：运行上位机只需要 OpenCV、NumPy 和 Pillow
+- 实时视频优先：RVM 在真实人像直播模拟中综合分最高，速度接近传统算法
 
 ## 安装
 
@@ -16,7 +16,13 @@
 pip install -r requirements.txt
 ```
 
-当前上位机运行链路只使用 MOG2，不再加载深度学习模型依赖。历史算法代码仍保留在 `algorithms/` 中，便于复查旧实验报告。
+当前上位机运行链路默认使用 RVM，需要 `onnxruntime` 和模型文件：
+
+```text
+models/rvm_mobilenetv3_fp32.onnx
+```
+
+MODNet、MediaPipe 和传统 CV 算法仍保留在 `algorithms/` 中，便于复查旧实验报告和重新评估。
 
 ## 运行
 
@@ -33,8 +39,8 @@ start_upper_computer.bat
 默认算法固定在 `config/constants.py`：
 
 ```python
-OPTIMAL_ALGORITHM_ID = 3
-OPTIMAL_ALGORITHM_NAME = "MOG2"
+OPTIMAL_ALGORITHM_ID = 2
+OPTIMAL_ALGORITHM_NAME = "RVM"
 ```
 
 ## 项目结构
@@ -45,7 +51,7 @@ qjfg/
 ├── requirements.txt            # 上位机运行依赖
 ├── start_upper_computer.bat    # Windows 一键启动脚本
 ├── README.md                   # 项目说明
-├── algorithms/                 # MOG2 运行链路与历史算法实现
+├── algorithms/                 # RVM 默认运行链路与历史算法实现
 │   ├── factory.py
 │   ├── video_thread.py
 │   ├── cv_classic/
@@ -79,6 +85,7 @@ qjfg/
 ```bash
 start_upper_computer.bat
 python scripts/evaluation/webcam_experiment.py
+python scripts/evaluation/live_stream_simulation_report.py
 python scripts/evaluation/ppm100_eval.py
 python scripts/evaluation/merge_ppm100_summary.py
 python tests/manual/smoke_factory.py
@@ -101,5 +108,6 @@ $env:PPM100_DIR="D:\datasets\PPM-100"
 ## 故障排除
 
 - 背景为空：确认 `assets/backgrounds/` 中存在支持格式图片
+- RVM 初始化失败：确认已安装 `onnxruntime`，且 `models/rvm_mobilenetv3_fp32.onnx` 存在
 - PPM-100 评估找不到数据：确认数据集目录或 `PPM100_DIR` 环境变量
 - 摄像头无法打开：确认摄像头未被其他程序占用，并检查系统摄像头权限

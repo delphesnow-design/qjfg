@@ -11,7 +11,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from algorithms.factory import BackgroundChangerFactory
 
 # 1. 创建factory
-factory = BackgroundChangerFactory()   # MOG2
+factory = BackgroundChangerFactory()   # RVM
 print("factory创建成功:", type(factory))
 print("factory属性:", [x for x in dir(factory) if not x.startswith('_')])
 

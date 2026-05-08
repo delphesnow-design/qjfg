@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="860" height="442" viewBox="0 0 860 442">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="24" y="34" font-size="21" font-family="Arial, sans-serif" font-weight="700">前景误替换率（越低越好）</text>
+<line x1="150" y1="50" x2="818" y2="50" stroke="#d7dde5"/>
+<text x="136" y="74" text-anchor="end" font-size="14" font-family="Arial, sans-serif" fill="#273142">LOBSTER</text>
+<rect x="150" y="58" width="6.7" height="23" rx="4" fill="#c74d45"/>
+<text x="164.7" y="74" font-size="13" font-family="Arial, sans-serif" fill="#273142">0.01</text>
+<text x="136" y="118" text-anchor="end" font-size="14" font-family="Arial, sans-serif" fill="#273142">KNN</text>
+<rect x="150" y="102" width="20.7" height="23" rx="4" fill="#c74d45"/>
+<text x="178.7" y="118" font-size="13" font-family="Arial, sans-serif" fill="#273142">0.02</text>
+<text x="136" y="162" text-anchor="end" font-size="14" font-family="Arial, sans-serif" fill="#273142">MOG2</text>
+<rect x="150" y="146" width="55.4" height="23" rx="4" fill="#c74d45"/>
+<text x="213.4" y="162" font-size="13" font-family="Arial, sans-serif" fill="#273142">0.06</text>
+<text x="136" y="206" text-anchor="end" font-size="14" font-family="Arial, sans-serif" fill="#273142">RVM</text>
+<rect x="150" y="190" width="76.8" height="23" rx="4" fill="#c74d45"/>
+<text x="234.8" y="206" font-size="13" font-family="Arial, sans-serif" fill="#273142">0.08</text>
+<text x="136" y="250" text-anchor="end" font-size="14" font-family="Arial, sans-serif" fill="#273142">MODNet</text>
+<rect x="150" y="234" width="164.1" height="23" rx="4" fill="#c74d45"/>
+<text x="322.1" y="250" font-size="13" font-family="Arial, sans-serif" fill="#273142">0.17</text>
+<text x="136" y="294" text-anchor="end" font-size="14" font-family="Arial, sans-serif" fill="#273142">SuBSENSE</text>
+<rect x="150" y="278" width="322.1" height="23" rx="4" fill="#c74d45"/>
+<text x="480.1" y="294" font-size="13" font-family="Arial, sans-serif" fill="#273142">0.33</text>
+<text x="136" y="338" text-anchor="end" font-size="14" font-family="Arial, sans-serif" fill="#273142">GrabCut</text>
+<rect x="150" y="322" width="451.1" height="23" rx="4" fill="#c74d45"/>
+<text x="609.1" y="338" font-size="13" font-family="Arial, sans-serif" fill="#273142">0.46</text>
+<text x="136" y="382" text-anchor="end" font-size="14" font-family="Arial, sans-serif" fill="#273142">MediaPipe</text>
+<rect x="150" y="366" width="668.0" height="23" rx="4" fill="#c74d45"/>
+<text x="734.0" y="382" font-size="13" font-family="Arial, sans-serif" fill="#273142">0.68</text>
+</svg>

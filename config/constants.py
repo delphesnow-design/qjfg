@@ -36,11 +36,11 @@ RVM_MODEL_PATH = os.path.join(MODEL_DIR, "rvm_mobilenetv3_fp32.onnx")
 MODEL_PATH = MEDIAPIPE_MODEL_PATH
 
 # =============== 算法选择参数 ===============
-# 当前应用只使用综合 benchmark 最优的 MOG2 算法。
+# 当前上位机默认使用直播压力测试综合最优的 RVM 算法。
 # 旧算法实现保留在 algorithms/ 中，用于历史对比和实验复查。
 # =========================================
-OPTIMAL_ALGORITHM_ID = 3
-OPTIMAL_ALGORITHM_NAME = "MOG2"
+OPTIMAL_ALGORITHM_ID = 2
+OPTIMAL_ALGORITHM_NAME = "RVM"
 
 # 向后兼容旧入口代码中的 ALGORITHM_ID 名称。
 ALGORITHM_ID = OPTIMAL_ALGORITHM_ID

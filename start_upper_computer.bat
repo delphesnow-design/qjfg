@@ -13,11 +13,19 @@ echo Project: %CD%
 echo Python:  %PYTHON_EXE%
 echo.
 
-"%PYTHON_EXE%" -c "import cv2, numpy, PIL" >nul 2>nul
+"%PYTHON_EXE%" -c "import cv2, numpy, PIL, onnxruntime" >nul 2>nul
 if errorlevel 1 (
     echo Missing runtime dependencies.
     echo Please run:
     echo "%PYTHON_EXE%" -m pip install -r requirements.txt
+    echo.
+    pause
+    exit /b 1
+)
+
+if not exist "%CD%\models\rvm_mobilenetv3_fp32.onnx" (
+    echo Missing RVM model:
+    echo "%CD%\models\rvm_mobilenetv3_fp32.onnx"
     echo.
     pause
     exit /b 1

@@ -10,7 +10,29 @@
 - 截图与录屏：保存到 `assets/screenshots/` 和 `assets/recordings/`
 - 实时视频优先：RVM 在真实人像直播模拟中综合分最高，速度接近传统算法
 
-## 安装
+## 快速开始
+
+新机器第一次拉取项目后，先运行独立安装脚本：
+
+```bat
+install_runtime.bat
+```
+
+安装脚本会自动创建 `.venv`、安装 `requirements.txt` 中的依赖，并下载默认 RVM 模型到：
+
+```text
+models/rvm_mobilenetv3_fp32.onnx
+```
+
+安装完成后启动上位机：
+
+```bat
+start_upper_computer.bat
+```
+
+首次安装需要联网下载依赖和模型；后续启动不需要重复安装。
+
+## 手动安装
 
 ```bash
 pip install -r requirements.txt
@@ -49,6 +71,7 @@ OPTIMAL_ALGORITHM_NAME = "RVM"
 qjfg/
 ├── main.py                     # 应用入口
 ├── requirements.txt            # 上位机运行依赖
+├── install_runtime.bat         # Windows 首次安装脚本，创建 .venv 并下载 RVM 模型
 ├── start_upper_computer.bat    # Windows 一键启动脚本
 ├── README.md                   # 项目说明
 ├── algorithms/                 # RVM 默认运行链路与历史算法实现
@@ -83,6 +106,7 @@ qjfg/
 ## 常用脚本
 
 ```bash
+install_runtime.bat
 start_upper_computer.bat
 python scripts/evaluation/webcam_experiment.py
 python scripts/evaluation/live_stream_simulation_report.py

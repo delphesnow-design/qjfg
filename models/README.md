@@ -11,3 +11,15 @@ models/rvm_mobilenetv3_fp32.onnx
 当前上位机默认使用 RVM，因此 `models/rvm_mobilenetv3_fp32.onnx` 是启动必需文件。MODNet 和 MediaPipe 权重用于历史对比、PPM-100 评估和直播压力测试。
 
 权重文件通常较大，已通过 `.gitignore` 排除。
+
+新机器首次运行可以在项目根目录执行：
+
+```bat
+install_runtime.bat
+```
+
+该脚本会自动下载 `rvm_mobilenetv3_fp32.onnx`。如需手动下载，可使用 RVM 官方 release：
+
+```text
+https://github.com/PeterL1n/RobustVideoMatting/releases/download/v1.0.0/rvm_mobilenetv3_fp32.onnx
+```

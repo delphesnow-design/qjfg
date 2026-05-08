@@ -6,11 +6,11 @@ __pycache__/
 *.pyd
 
 # Model weights
-*.onnx
-*.ckpt
-*.tflite
-*.pt
-*.pth
+# *.onnx
+# *.ckpt
+# *.tflite
+# *.pt
+# *.pth
 
 # Runtime outputs
 assets/screenshots/

@@ -1,4 +1,14 @@
+# Core upper-computer runtime
 opencv-python>=4.5.0
 numpy>=1.19.0
 Pillow>=8.0.0
 onnxruntime>=1.14.0
+
+# Optional algorithms kept for experiments and historical comparison
+mediapipe>=0.10.30
+torch>=2.0.0
+torchvision>=0.15.0
+
+# Evaluation/reporting scripts
+matplotlib>=3.5.0
+psutil>=5.9.0

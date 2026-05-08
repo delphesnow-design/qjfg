@@ -18,7 +18,7 @@ models/rvm_mobilenetv3_fp32.onnx
 install_runtime.bat
 ```
 
-该脚本会自动下载 `rvm_mobilenetv3_fp32.onnx`。如需手动下载，可使用 RVM 官方 release：
+该脚本只安装 Python 依赖，不会下载权重文件。RVM 模型可从官方 release 获取：
 
 ```text
 https://github.com/PeterL1n/RobustVideoMatting/releases/download/v1.0.0/rvm_mobilenetv3_fp32.onnx

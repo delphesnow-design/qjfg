@@ -11,6 +11,9 @@ import numpy as np
 from config.constants import BACKGROUND_DIR
 
 
+_BITCOUNT8 = np.array([int(i).bit_count() for i in range(256)], dtype=np.uint8)
+
+
 # ─────────────────────────────────────────────────────────────
 #  通用后处理工具
 # ─────────────────────────────────────────────────────────────
@@ -61,6 +64,11 @@ def _morph_dilate(mask: np.ndarray, iterations: int, ksize: int = 5) -> np.ndarr
     return cv2.dilate(mask, k, iterations=iterations)
 
 
+def _morph_open(mask: np.ndarray, ksize: int = 3) -> np.ndarray:
+    k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (ksize, ksize))
+    return cv2.morphologyEx(mask, cv2.MORPH_OPEN, k)
+
+
 def _smooth_alpha(mask: np.ndarray, blur: int) -> np.ndarray:
     blur_k = max(3, blur | 1)
     return cv2.GaussianBlur(mask, (blur_k, blur_k), 0)
@@ -93,8 +101,12 @@ _LBSP_RING: np.ndarray = np.array(
 def _lbsp_desc(gray: np.ndarray, t: int = 20) -> np.ndarray:
     g = gray.astype(np.int16)
     desc = np.zeros(gray.shape, dtype=np.uint16)
+    padded = cv2.copyMakeBorder(gray, 2, 2, 2, 2, cv2.BORDER_REFLECT_101)
+    h, w = gray.shape[:2]
     for i, (dy, dx) in enumerate(_LBSP_RING):
-        shifted = np.roll(np.roll(gray, int(dy), axis=0), int(dx), axis=1).astype(np.int16)
+        y0 = 2 + int(dy)
+        x0 = 2 + int(dx)
+        shifted = padded[y0:y0 + h, x0:x0 + w].astype(np.int16)
         bit = (np.abs(g - shifted) < t).astype(np.uint16)
         desc |= bit << np.uint16(i)
     return desc
@@ -104,9 +116,7 @@ def _hamming16(a: np.ndarray, b: np.ndarray) -> np.ndarray:
     xor = (a ^ b).astype(np.uint16)
     hi = (xor >> np.uint16(8)).astype(np.uint8)
     lo = (xor & np.uint16(0xFF)).astype(np.uint8)
-    cnt_hi = np.unpackbits(hi[..., np.newaxis], axis=-1).sum(axis=-1)
-    cnt_lo = np.unpackbits(lo[..., np.newaxis], axis=-1).sum(axis=-1)
-    return (cnt_hi + cnt_lo).astype(np.uint8)
+    return (_BITCOUNT8[hi] + _BITCOUNT8[lo]).astype(np.uint8)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -122,31 +132,46 @@ class _SubtractorProcessor:
     """
     def __init__(self, algorithm="MOG2"):
         self.algorithm = algorithm
-        self.var_threshold = 16
-        self.dist_threshold = 400
+        self.var_threshold = 24
+        self.dist_threshold = 650
         self.erode_iter  = 1
-        self.dilate_iter = 3   # 加大膨胀，补全人像边缘缺失
-        self.blur_size   = 21
+        self.dilate_iter = 2
+        self.blur_size   = 17
+        self.warmup_frames = 8
+        self.learning_rate = 0.002
+        self._frame_count = 0
         self._build()
 
     def _build(self):
         if self.algorithm == "MOG2":
             self._sub = cv2.createBackgroundSubtractorMOG2(
-                history=500, varThreshold=self.var_threshold, detectShadows=True
+                history=350, varThreshold=self.var_threshold, detectShadows=True
             )
+            self._sub.setShadowValue(127)
+            self._sub.setShadowThreshold(0.55)
+            self._sub.setBackgroundRatio(0.85)
+            self._sub.setComplexityReductionThreshold(0.03)
         else:
             self._sub = cv2.createBackgroundSubtractorKNN(
-                history=500, dist2Threshold=float(self.dist_threshold), detectShadows=True
+                history=350, dist2Threshold=float(self.dist_threshold), detectShadows=True
             )
+            self._sub.setShadowValue(127)
+            self._sub.setShadowThreshold(0.55)
+            self._sub.setNSamples(7)
+            self._sub.setkNNSamples(2)
 
     def reset(self):
+        self._frame_count = 0
         self._build()
 
     def get_alpha(self, frame: np.ndarray) -> np.ndarray:
-        raw = self._sub.apply(frame)
-        _, mask = cv2.threshold(raw, 200, 255, cv2.THRESH_BINARY)
+        self._frame_count += 1
+        lr = 0.35 if self._frame_count <= self.warmup_frames else self.learning_rate
+        raw = self._sub.apply(frame, learningRate=lr)
+        mask = np.where(raw > 0, 255, 0).astype(np.uint8)
 
         # ① 闭运算：填补人体内部空洞（解决颗粒遮挡）
+        mask = _morph_open(mask, ksize=3)
         mask = _fill_holes(mask, ksize=19)
 
         # ② 腐蚀去噪 → 膨胀恢复（erode_iter < dilate_iter 使整体偏向扩张）
@@ -177,13 +202,14 @@ class _GrabCutProcessor:
     4. 连通域过滤去除矩形边角区域的杂散前景块
     """
     def __init__(self):
-        self.iterations      = 5    # 原 2 → 5，能量收敛更好
-        self.rect_ratio      = 0.10
-        self.erode_iter      = 2    # 原 1 → 2，收缩外扩的背景误判
+        self.iterations      = 4
+        self.track_iterations = 1
+        self.rect_ratio      = 0.22
+        self.erode_iter      = 3
         self.dilate_iter     = 1
-        self.blur_size       = 15
-        self.process_max_side = 420
-        self.run_every_n_frames = 3
+        self.blur_size       = 13
+        self.process_max_side = 220
+        self.run_every_n_frames = 4
         self._skip = 0
         self._last_alpha: Optional[np.ndarray] = None
 
@@ -219,11 +245,29 @@ class _GrabCutProcessor:
 
         bgd_model = np.zeros((1, 65), np.float64)
         fgd_model = np.zeros((1, 65), np.float64)
-        mask_gc   = np.zeros((shs, sws), np.uint8)
+        mask_gc   = np.full((shs, sws), cv2.GC_BGD, np.uint8)
         try:
-            cv2.grabCut(small, mask_gc, (rx, ry, rw, rh),
-                        bgd_model, fgd_model,
-                        self.iterations, cv2.GC_INIT_WITH_RECT)
+            if self._last_alpha is not None and self._last_alpha.shape[:2] == (h, w):
+                prior = cv2.resize(self._last_alpha, (sws, shs), interpolation=cv2.INTER_LINEAR)
+                mask_gc[:, :] = cv2.GC_PR_BGD
+                mask_gc[prior > 0.18] = cv2.GC_PR_FGD
+                confident_fg = (prior > 0.70).astype(np.uint8) * 255
+                confident_fg = _morph_erode(confident_fg, 1, ksize=3)
+                mask_gc[confident_fg > 0] = cv2.GC_FGD
+                border = max(2, min(shs, sws) // 40)
+                mask_gc[:border, :] = cv2.GC_BGD
+                mask_gc[-border:, :] = cv2.GC_BGD
+                mask_gc[:, :border] = cv2.GC_BGD
+                mask_gc[:, -border:] = cv2.GC_BGD
+                mode = cv2.GC_INIT_WITH_MASK
+                iterations = self.track_iterations
+                cv2.grabCut(small, mask_gc, None, bgd_model, fgd_model, iterations, mode)
+            else:
+                cv2.grabCut(
+                    small, mask_gc, (rx, ry, rw, rh),
+                    bgd_model, fgd_model,
+                    self.iterations, cv2.GC_INIT_WITH_RECT,
+                )
         except cv2.error:
             return np.zeros((h, w), np.float32)
 

@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="860" height="458" viewBox="0 0 860 458">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="24" y="34" font-size="21" font-family="Arial, sans-serif" font-weight="700">估算吞吐量（FPS，越高越好）</text>
+<line x1="150" y1="50" x2="820" y2="50" stroke="#d7dde5"/>
+<text x="136" y="75" text-anchor="end" font-size="14" font-family="Arial, sans-serif" fill="#273142">MODNet</text>
+<rect x="150" y="58" width="11.7" height="24" rx="4" fill="#2f8f5b"/>
+<text x="169.7" y="75" font-size="13" font-family="Arial, sans-serif" fill="#273142">4.13 FPS</text>
+<text x="136" y="121" text-anchor="end" font-size="14" font-family="Arial, sans-serif" fill="#273142">MediaPipe</text>
+<rect x="150" y="104" width="26.4" height="24" rx="4" fill="#2f8f5b"/>
+<text x="184.4" y="121" font-size="13" font-family="Arial, sans-serif" fill="#273142">9.36 FPS</text>
+<text x="136" y="167" text-anchor="end" font-size="14" font-family="Arial, sans-serif" fill="#273142">RVM</text>
+<rect x="150" y="150" width="448.0" height="24" rx="4" fill="#2f8f5b"/>
+<text x="606.0" y="167" font-size="13" font-family="Arial, sans-serif" fill="#273142">158.73 FPS</text>
+<text x="136" y="213" text-anchor="end" font-size="14" font-family="Arial, sans-serif" fill="#273142">MOG2</text>
+<rect x="150" y="196" width="670.0" height="24" rx="4" fill="#2f8f5b"/>
+<text x="740.0" y="213" font-size="13" font-family="Arial, sans-serif" fill="#273142">237.36 FPS</text>
+<text x="136" y="259" text-anchor="end" font-size="14" font-family="Arial, sans-serif" fill="#273142">KNN</text>
+<rect x="150" y="242" width="564.7" height="24" rx="4" fill="#2f8f5b"/>
+<text x="722.7" y="259" font-size="13" font-family="Arial, sans-serif" fill="#273142">200.04 FPS</text>
+<text x="136" y="305" text-anchor="end" font-size="14" font-family="Arial, sans-serif" fill="#273142">GrabCut</text>
+<rect x="150" y="288" width="242.9" height="24" rx="4" fill="#2f8f5b"/>
+<text x="400.9" y="305" font-size="13" font-family="Arial, sans-serif" fill="#273142">86.04 FPS</text>
+<text x="136" y="351" text-anchor="end" font-size="14" font-family="Arial, sans-serif" fill="#273142">LOBSTER</text>
+<rect x="150" y="334" width="51.0" height="24" rx="4" fill="#2f8f5b"/>
+<text x="209.0" y="351" font-size="13" font-family="Arial, sans-serif" fill="#273142">18.06 FPS</text>
+<text x="136" y="397" text-anchor="end" font-size="14" font-family="Arial, sans-serif" fill="#273142">SuBSENSE</text>
+<rect x="150" y="380" width="48.5" height="24" rx="4" fill="#2f8f5b"/>
+<text x="206.5" y="397" font-size="13" font-family="Arial, sans-serif" fill="#273142">17.19 FPS</text>
+</svg>
